@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 tf.disable_eager_execution()
 
-training_itr = 2000
+training_itr = 4000
 learning_rate = 1e-3
 batch_size = 128
 
@@ -36,6 +36,10 @@ xvalid = pk.load(pickle_in_xvalid)
 yvalid = pk.load(pickle_in_yvalid)
 
 xvalid = xvalid.reshape((xvalid.shape[0], 128, 768, 1))
+
+
+
+
 
 # Graph building
 x = tf.placeholder(tf.float32, [None, 128, 768, 1], name="x")  # x represents input
@@ -66,7 +70,7 @@ weights = {
     'w_conv_17': tf.get_variable("W17", shape=(17, 96, 1, 2), initializer=tf.truncated_normal_initializer(stddev=0.1)),
 
     'w_dense1': tf.get_variable("W_dense1", shape=(90, 128), initializer=tf.truncated_normal_initializer(stddev=0.1)),
-    # 'w_dense2': tf.get_variable("W_dense2", shape=(128, 128), initializer=tf.truncated_normal_initializer(stddev=0.1)),
+    'w_dense2': tf.get_variable("W_dense2", shape=(128, 128), initializer=tf.truncated_normal_initializer(stddev=0.1)),
     'w_out': tf.get_variable('W_out', shape=(128, num_classes), initializer=tf.truncated_normal_initializer(stddev=0.1))
 }
 
@@ -76,7 +80,7 @@ biases = {
     'b_conv_17': tf.get_variable("B17", shape=(2), initializer=tf.constant_initializer(0.1)),
 
     'b_dense1': tf.get_variable('B_dense1', shape=(128), initializer=tf.constant_initializer(0.1)),
-    # 'b_dense2': tf.get_variable('B_dense2', shape=(128), initializer=tf.constant_initializer(0.1)),
+    'b_dense2': tf.get_variable('B_dense2', shape=(128), initializer=tf.constant_initializer(0.1)),
     'b_out': tf.get_variable('B_out', shape=(num_classes), initializer=tf.constant_initializer(0.1))
 }
 
@@ -118,8 +122,9 @@ def CNN(x, weights, biases):
 
     # Fully connected layer
     dense_output_1 = tf.nn.relu(tf.add(tf.matmul(dense_input, weights['w_dense1']), biases['b_dense1']))
-    # dense_output_2 = tf.nn.relu(tf.add(tf.matmul(dense_output_1, weights['w_dense2']), biases['b_dense2']))
-    output = tf.add(tf.matmul(dense_output_1, weights['w_out']), biases['b_out'])
+    dense_output_2 = tf.nn.relu(tf.add(tf.matmul(dense_output_1, weights['w_dense2']), biases['b_dense2']))
+    drop_out = tf.nn.dropout(dense_output_2, rate=0.3)
+    output = tf.add(tf.matmul(drop_out, weights['w_out']), biases['b_out'])
 
     return output
 
@@ -170,6 +175,10 @@ with tf.Session() as sess:
     acc_max = 0
 
     for i in range(training_itr):
+
+        if i > 1000:
+            learning_rate = 1e-4
+
         for batch in range(len(xtrain) // batch_size):
             batch_x = xtrain[batch * batch_size: min(len(xtrain), (batch + 1) * batch_size)] \
                 .reshape((min(len(xtrain) - batch * batch_size, batch_size), 128, 768, 1))
